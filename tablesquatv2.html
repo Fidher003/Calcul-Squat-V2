@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calcul Squat</title>
+
+  <style>
+    :root {
+      --bg: #0e1117;
+      --card: #161b22;
+      --text: #e6edf3;
+      --muted: #9da7b3;
+      --border: #30363d;
+      --accent: #2f81f7;
+      --sep: rgba(48,54,61,0.85);
+      --rowHL: rgba(255,255,255,0.06); /* lighter highlight row */
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin: 8px 0 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    @media (max-width: 800px) {
+      .row { grid-template-columns: 1fr; }
+    }
+
+    label {
+      display: block;
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    select, input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    select:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    h2 {
+      font-size: 1.15rem;
+      margin: 6px 0 10px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #0b1220;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.90rem;
+    }
+
+    th, td {
+      padding: 0.35rem 0.45rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(48,54,61,0.6);
+      white-space: nowrap;
+    }
+
+    /* HEADER bigger */
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #0b1220;
+      color: var(--muted);
+      z-index: 1;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    /* Speed column bigger (but NOT highlighted anymore) */
+    tbody th {
+      font-size: 1rem;
+      font-weight: 600;
+      background: transparent; /* ← remove left-column highlight */
+    }
+
+    /* Vertical separator lines between columns */
+    thead th + th { border-left: 1px solid var(--sep); }
+    tbody th + td { border-left: 1px solid var(--sep); } /* between speed and first depth */
+    tbody td + td { border-left: 1px solid var(--sep); } /* between depth columns */
+
+    /* Highlight specific rows (8,10,12,14) */
+    tr.highlight-row th,
+    tr.highlight-row td {
+      background: var(--rowHL);
+    }
+
+    .reference-note {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-align: left; /* left side */
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>Calcul Squat</h1>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="shipType">Type de navire</label>
+        <select id="shipType">
+          <option value="CONTENEUR">CONTENEUR</option>
+          <option value="AUTRES">AUTRES</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="beam">Largeur / Beam (m)</label>
+        <input id="beam" type="number" step="0.1" value="32.0">
+      </div>
+
+      <div>
+        <label for="draft">Tirant d’eau / Draft (m)</label>
+        <input id="draft" type="number" step="0.1" value="10.5">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Niveau d’eau requis (m)</h2>
+
+    <div class="table-wrap">
+      <table id="resultTable" aria-label="Niveau d'eau requis"></table>
+    </div>
+
+    <p class="reference-note">Pour référence seulement</p>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const shipTypeEl = document.getElementById("shipType");
+  const beamEl = document.getElementById("beam");
+  const draftEl = document.getElementById("draft");
+  const tableEl = document.getElementById("resultTable");
+
+  // --- Tables ---
+  const CONTENEUR = [
+    [56,0.93,1.02,1.13,1.26,1.49,1.74,2.03,2.33,2.70],
+    [58,0.92,1.01,1.12,1.24,1.47,1.71,1.99,2.29,2.65],
+    [60,0.91,1.00,1.10,1.22,1.44,1.68,1.96,2.24,2.60],
+    [62,0.90,0.98,1.08,1.20,1.42,1.65,1.92,2.20,2.55],
+    [64,0.89,0.97,1.07,1.18,1.39,1.62,1.88,2.16,2.50],
+    [66,0.88,0.96,1.05,1.16,1.36,1.58,1.84,2.12,2.45],
+    [68,0.87,0.94,1.03,1.14,1.34,1.55,1.80,2.08,2.40],
+    [70,0.86,0.93,1.01,1.11,1.31,1.52,1.76,2.03,2.34],
+    [72,0.84,0.91,1.00,1.09,1.28,1.48,1.72,1.98,2.29],
+    [74,0.83,0.90,0.98,1.07,1.25,1.45,1.68,1.93,2.23],
+    [76,0.79,0.88,0.96,1.04,1.22,1.41,1.63,1.88,2.17],
+  ];
+
+  const AUTRES = [
+    [56,0.99,1.10,1.23,1.39,1.65,1.93,2.24,2.57,2.98],
+    [58,0.97,1.08,1.21,1.36,1.61,1.88,2.18,2.51,2.91],
+    [60,0.96,1.06,1.18,1.32,1.57,1.83,2.13,2.44,2.84],
+    [62,0.94,1.04,1.16,1.29,1.53,1.78,2.08,2.39,2.77],
+    [64,0.93,1.02,1.13,1.26,1.49,1.74,2.02,2.32,2.69],
+    [66,0.91,1.00,1.10,1.23,1.45,1.70,1.97,2.26,2.62],
+    [68,0.90,0.98,1.08,1.20,1.42,1.65,1.91,2.20,2.55],
+    [70,0.88,0.96,1.05,1.16,1.36,1.59,1.84,2.12,2.46],
+    [72,0.86,0.94,1.03,1.13,1.33,1.54,1.78,2.05,2.37],
+    [74,0.84,0.93,1.01,1.10,1.29,1.50,1.73,2.00,2.30],
+    [76,0.80,0.90,0.97,1.06,1.24,1.44,1.66,1.92,2.21],
+  ];
+
+  // Removed 10.5 column:
+  const DEPTHS = [10.7, 11.0, 11.3];
+  const SPEEDS = [7,8,9,10,11,12,13,14,15];
+
+  // rows to highlight
+  const HIGHLIGHT = new Set([8, 10, 12, 14]);
+
+  function vlookupApprox(x, table) {
+    let idx = 0;
+    for (let i = 0; i < table.length; i++) {
+      if (table[i][0] <= x) idx = i;
+      else break;
+    }
+    return table[idx];
+  }
+
+  function compute(ship, beam, draft) {
+    const lookupX = 100 - beam;
+    const table = ship === "CONTENEUR" ? CONTENEUR : AUTRES;
+    const row = vlookupApprox(lookupX, table);
+
+    // row indexes:
+    // row[0] = key, row[1] = speed 7 ... row[9] = speed 15
+    const result = {};
+    SPEEDS.forEach((s, i) => {
+      result[s] = {};
+      DEPTHS.forEach(d => {
+        result[s][d] = row[i + 1] - (d - draft);
+      });
+    });
+
+    return result;
+  }
+
+  function render(result) {
+    // Header
+    let thead = "<thead><tr><th>Vitesse</th>";
+    DEPTHS.forEach(d => thead += `<th>${d.toFixed(1)} m</th>`);
+    thead += "</tr></thead>";
+
+    // Body with highlighted rows
+    let tbody = "<tbody>";
+    SPEEDS.forEach(s => {
+      const trClass = HIGHLIGHT.has(s) ? ' class="highlight-row"' : "";
+      tbody += `<tr${trClass}><th>${s}</th>`;
+      DEPTHS.forEach(d => {
+        tbody += `<td>${result[s][d].toFixed(2)}</td>`;
+      });
+      tbody += "</tr>";
+    });
+    tbody += "</tbody>";
+
+    tableEl.innerHTML = thead + tbody;
+  }
+
+  function update() {
+    const beam = parseFloat(beamEl.value);
+    const draft = parseFloat(draftEl.value);
+    if (!Number.isFinite(beam) || !Number.isFinite(draft)) return;
+    render(compute(shipTypeEl.value, beam, draft));
+  }
+
+  shipTypeEl.addEventListener("change", update);
+  beamEl.addEventListener("input", update);
+  draftEl.addEventListener("input", update);
+
+  update();
+})();
+</script>
+</body>
+</html>
