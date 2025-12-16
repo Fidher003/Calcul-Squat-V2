@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Calcul Squat</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0e1117">
 
   <style>
     :root {
@@ -283,5 +285,13 @@
   update();
 })();
 </script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+</script>
+
 </body>
 </html>
+
